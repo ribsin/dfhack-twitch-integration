@@ -20,7 +20,12 @@ env:
 
 jobs:
   build:
-    runs-on: windows-latest
+    # Pinned to windows-2022 on purpose. DFHack's top-level CMakeLists requires
+    # MSVC toolset 14.30..14.44 (VS 2022). The `windows-latest` image now ships
+    # VS 18 / MSVC 14.50, which DFHack rejects at configure time with:
+    #   "MSVC 2022 version 1930 to 1944 is required, Version Found: 1950"
+    # Bump this only when DFHack relaxes that range.
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,11 +58,20 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
+          # Belt-and-braces: even on windows-2022, force VS 2022 in case a
+          # future image installs VS 18 side-by-side. DFHack requires MSVC
+          # toolset 14.30..14.44.
+          vsversion: 2022
 
       - name: Install Perl XML modules (DFHack codegen)
         shell: bash
+        # DFHack's codegen step needs XML::LibXML to chew library/xml. If the
+        # cpanm install silently fails, configure looks fine but the build
+        # explodes much later with a confusing error. Don't swallow failures
+        # here, and keep enough log context to diagnose.
         run: |
-          cpanm --notest XML::LibXML XML::LibXSLT 2>&1 | tail -n 30 || true
+          set -o pipefail
+          cpanm --notest XML::LibXML XML::LibXSLT 2>&1 | tail -n 200
 
       - name: Configure
         working-directory: dfhack

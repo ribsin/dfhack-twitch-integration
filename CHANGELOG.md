@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.0-rc3 — CI: pin VS 2022 toolset
+
+### Fixed
+- **CI build broken by GitHub runner image bump.** `windows-latest` now ships
+  Visual Studio 18 / MSVC toolset 14.50, which DFHack's top-level CMakeLists
+  rejects at configure time:
+  `MSVC 2022 version 1930 to 1944 is required, Version Found: 1950`.
+  Plugin source is unchanged; this is purely a CI pin.
+
+### Changed
+- `.github/workflows/build.yml`:
+  - `runs-on: windows-latest` → `runs-on: windows-2022` (DFHack requires MSVC
+    toolset 14.30..14.44 / VS 2022).
+  - Added `vsversion: 2022` to the `ilammy/msvc-dev-cmd@v1` step as a
+    belt-and-braces guard against future side-by-side VS 18 installs.
+  - Hardened the Perl XML modules step: dropped `|| true`, added
+    `set -o pipefail`, and bumped `tail -n 30` → `tail -n 200`. A silent
+    `cpanm` failure here would have been the next confusing build break, since
+    DFHack's codegen needs `XML::LibXML` to chew `library/xml`.
+
 ## v1.0-rc2 — Windows-only, WinHTTP HTTPS
 
 ### Changed
