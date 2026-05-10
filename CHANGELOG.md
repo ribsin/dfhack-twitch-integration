@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.0-rc7 — CI: stop installing Perl entirely (DFHack doesn't, neither should we)
+
+### Fixed
+- **CI Perl install step was always vestigial; removing it ends the rc3..rc6
+  iteration loop.** Confirmed by reading DFHack's own `build-windows.yml`
+  (byte-identical between `master` and the `53.12-r1` tag we pin): DFHack's
+  workflow has **zero** Perl install steps. It runs on `windows-2022` and
+  trusts the runner image's preinstalled Strawberry Perl, which still bundles
+  `XML::LibXML` + `XML::LibXSLT` for codegen. Every cpanm / `shogo82148/...` /
+  `choco install strawberryperl` workaround we attempted was invoking
+  machinery the upstream project never invokes — and was the *only* thing
+  failing across rc3–rc6:
+    - rc3: image's preinstalled fatpacked `cpanm` is broken
+      (`CPAN::Meta::Prereqs` import error). We hit it because we *called* cpanm.
+    - rc4: missing `ExtUtils::Manifest` in `@INC`. We hit it because we
+      *called* cpanm.
+    - rc5: cpanm circular-resolution bailout (`MakeMaker` upgrade vs. `Pod::Man`
+      install). We hit it because we *called* cpanm.
+    - rc6: `choco install strawberryperl` returned MSI 1603 — Windows
+      Installer refuses a sideways install over the runner image's
+      preinstalled Strawberry. We hit it because we tried to *replace* the
+      preinstalled Perl that already had the modules we needed.
+
+  Plugin source is unchanged.
+
+### Changed
+- `.github/workflows/build.yml`:
+  - **Removed** the entire Perl install step (the `choco install strawberryperl`
+    block from rc6, and by extension all of rc3–rc5's cpanm machinery).
+  - **Kept** a fast-fail verify step (`perl -V:version` +
+    `perl -MXML::LibXML -e ...` + `perl -MXML::LibXSLT -e ...`). It costs ~50ms
+    and surfaces a clear error here if a future runner image ever drops the
+    bundled modules, rather than letting DFHack codegen blow up 30s later
+    with a less obvious message.
+
 ## v1.0-rc6 — CI: skip cpanm; install full Strawberry Perl via Chocolatey
 
 ### Fixed

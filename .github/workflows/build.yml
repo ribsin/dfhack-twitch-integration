@@ -63,35 +63,18 @@ jobs:
           # toolset 14.30..14.44.
           vsversion: 2022
 
-      # Install the *full* Strawberry Perl 5.38 distribution via Chocolatey.
-      # Strawberry's "Standard" distribution bundles XML::LibXML + XML::LibXSLT
-      # *prebuilt* (along with ExtUtils::MakeMaker, ExtUtils::Manifest,
-      # Pod::Man, and the Alien::Libxml2 chain). This skips cpanm entirely
-      # and dodges every bug we hit in rc3..rc5:
-      #   - rc3: image's broken fatpacked cpanm (CPAN::Meta::Prereqs error)
-      #   - rc4: missing ExtUtils::Manifest in @INC
-      #   - rc5: cpanm circular-resolution bailout when MakeMaker upgrade
-      #          and Pod::Man install were both in flight
-      # Pinned to 5.38.2.2 — the last 5.38 LTS-line release. --force
-      # --allow-downgrade lets us replace the runner image's preinstalled
-      # Strawberry 5.42 (which has the busted cpanm).
-      - name: Install Strawberry Perl 5.38 (full distribution)
-        shell: powershell
-        run: |
-          choco install strawberryperl `
-            --version=5.38.2.2 -y --no-progress --force --allow-downgrade
-          # Prepend our pinned Strawberry to PATH for the rest of the job.
-          # Choco's package updates the *machine* PATH but Actions steps need
-          # an explicit GITHUB_PATH bump to see it on this run.
-          "C:\strawberry\c\bin"         | Add-Content -Path $env:GITHUB_PATH
-          "C:\strawberry\perl\site\bin" | Add-Content -Path $env:GITHUB_PATH
-          "C:\strawberry\perl\bin"      | Add-Content -Path $env:GITHUB_PATH
-
-      - name: Verify Perl XML modules (DFHack codegen)
+      # No Perl install step on purpose. DFHack's own Windows CI workflow
+      # (DFHack/dfhack `.github/workflows/build-windows.yml`, identical at
+      # `master` and the `53.12-r1` tag we pin) has *no* Perl install step:
+      # it relies entirely on the windows-2022 runner image's preinstalled
+      # Strawberry Perl, which already bundles XML::LibXML + XML::LibXSLT
+      # for codegen. Every cpanm/choco workaround we tried in rc3..rc6 was
+      # invoking machinery the upstream project never invokes — and was the
+      # *only* thing failing. The verify step below is a fast-fail tripwire
+      # so a future image change surfaces *here* with a clear message rather
+      # than 30s later mid-codegen.
+      - name: Verify preinstalled Perl XML modules (DFHack codegen)
         shell: bash
-        # Strawberry ships these prebuilt; if a future Strawberry drops them,
-        # this step fails *here* with a clear message rather than two steps
-        # later inside DFHack's codegen.
         run: |
           set -o pipefail
           perl -V:version
