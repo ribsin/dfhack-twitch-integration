@@ -1,5 +1,47 @@
 # Changelog
 
+## v1.0-rc9 — Plugin: require C++20 (DFHack 53.x uses concepts + `requires`)
+
+### Fixed
+- **`dev/CMakeLists.txt` was forcing `CMAKE_CXX_STANDARD 17` while DFHack
+  53.x's public headers require C++20.** rc8 finally got CI past Perl, only
+  to faceplant on the very next stage — compiling the plugin itself. The
+  build emitted `STL4038` (`<concepts> requires C++20 or later`) followed
+  by a cascade of every C++20 feature DFHack uses:
+    - `MiscUtils.h:325` — `std::invocable` (C++20 concepts library)
+    - `DataDefs.h:575` — `std::assignable_from` (C++20)
+    - `DataDefs.h:607` — bare `requires` keyword (C++20)
+    - `BitArray.h:605` — `std::bidirectional_iterator` (C++20 iterator concepts)
+    - `plugin.cpp:49` — `DFHACK_LUA_END` undefined (lives behind a
+      `#if __cpp_concepts` block in DFHack's headers, invisible in C++17)
+    - `LuaTools.h:43` — `lua.h` not found (cascading: when concepts blow up
+      the include chain stops short, but it's also a real propagation gap
+      worth pinning).
+
+  We were the *only* plugin in the build forcing 17. Every other DFHack
+  plugin inherits the project's C++20 default. This one line was lying
+  about its requirements since the very first commit.
+
+### Changed
+- `dev/CMakeLists.txt`:
+  - **`CMAKE_CXX_STANDARD 17` → `20`.** With a comment explaining exactly
+    which DFHack headers need it, so a future rebase doesn't quietly
+    revert this.
+  - **In-tree branch now links `lua`** in `DFHACK_PLUGIN(... LINK_LIBRARIES
+    winhttp ws2_32 lua)`. The `lua` CMake target's INTERFACE include dir
+    propagates `lua.h` into the plugin without us hard-coding the path.
+    Belt-and-braces against the propagation gap that may have contributed
+    to the `lua.h: No such file or directory` error.
+  - Out-of-tree branch unchanged — it already had
+    `${DFHACK_SOURCE_DIR}/depends/lua/include`.
+
+### Notes
+- Plugin source is unchanged. This is a build-system fix.
+- Lua scripts in `scripts_modinstalled/` are unchanged.
+- This unblocks the actual code from compiling for the first time in CI.
+  Expect the *next* CI run to surface real plugin-source errors (if any) —
+  not infrastructure ones. We are finally past the toolchain.
+
 ## v1.0-rc8 — CI: run Perl verify under cmd (Git Bash was shadowing Strawberry)
 
 ### Fixed
