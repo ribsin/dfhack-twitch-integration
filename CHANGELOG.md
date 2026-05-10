@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.0-rc4 — CI: pin Strawberry Perl 5.38
+
+### Fixed
+- **CI Perl step broken on the new windows-2022 image.** The Strawberry Perl
+  5.42 that now ships with the runner image bundles a fatpacked `cpanm` that
+  trips on modern `ExtUtils::MakeMaker`:
+  `Attempt to call undefined import method ... via package "CPAN::Meta::Prereqs"`
+  and lacks `ExtUtils::Manifest`, so `MakeMaker`'s Configure step also fails
+  with `Can't locate ExtUtils/Manifest.pm in @INC`. Plugin source is unchanged.
+
+### Changed
+- `.github/workflows/build.yml`:
+  - Added a `shogo82148/actions-setup-perl@v1` step pinning Strawberry Perl
+    `5.38` (`distribution: strawberry`) **before** the cpanm step. Pinning
+    insulates us from future Strawberry breakage in the same way the
+    `windows-2022` runner pin insulates us from future MSVC breakage.
+  - The cpanm step now installs `ExtUtils::Manifest` explicitly first, then
+    `XML::LibXML` + `XML::LibXSLT`. Removes one whole class of "the world
+    shifted under us" failures.
+
 ## v1.0-rc3 — CI: pin VS 2022 toolset
 
 ### Fixed
