@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.0-rc5 — CI: break cpanm MakeMaker self-upgrade circle
+
+### Fixed
+- **CI Perl step looped on a cpanm circular dependency.** With pinned
+  Strawberry 5.38 in place, asking cpanm to install `ExtUtils::Manifest`
+  triggered a MakeMaker upgrade; cpanm Configured the new
+  `ExtUtils::MakeMaker-7.78`, then tried to install `Pod::Man` (`podlators`),
+  whose `Makefile.PL` bails because the *new* MakeMaker isn't installed yet —
+  cascading failure all the way back up:
+  `Module 'ExtUtils::MakeMaker' is not installed`. Plugin source is unchanged.
+
+### Changed
+- `.github/workflows/build.yml`:
+  - **Removed** the explicit `cpanm --notest ExtUtils::Manifest` step. It was
+    a defensive carry-over from rc4, but Strawberry 5.38 already ships
+    `ExtUtils::Manifest`, and the line was the trigger for the MakeMaker
+    self-upgrade circle.
+  - **Added** `cpanm --notest --installdeps ExtUtils::MakeMaker` *before* the
+    XML modules. `--installdeps` installs MakeMaker's prereqs (`Pod::Man`,
+    `File::Path`, …) without installing MakeMaker itself, so any later
+    upgrade triggered by `Alien::Libxml2` / `XML::LibXML` can complete
+    without cycling back through `podlators`.
+
 ## v1.0-rc4 — CI: pin Strawberry Perl 5.38
 
 ### Fixed

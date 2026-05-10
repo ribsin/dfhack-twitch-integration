@@ -80,13 +80,21 @@ jobs:
       - name: Install Perl XML modules (DFHack codegen)
         shell: bash
         # DFHack's codegen step needs XML::LibXML to chew library/xml.
-        # ExtUtils::Manifest is installed first so MakeMaker's Configure
-        # step can find it; some Strawberry distributions don't ship it in
-        # core. Don't swallow failures here, and keep enough log context to
+        #
+        # We pre-install ExtUtils::MakeMaker's *deps* (Pod::Man, etc.) before
+        # the real install, to break a known cpanm circular-dependency trap:
+        # if Alien::Libxml2 / XML::LibXML triggers a MakeMaker upgrade, cpanm
+        # Configures the new MakeMaker, then tries to install Pod::Man
+        # (podlators), whose Makefile.PL bails because the *new* MakeMaker
+        # isn't installed yet — cascading failure all the way back up. By
+        # installing MakeMaker's deps via --installdeps first, the upgrade
+        # path can complete without circling.
+        #
+        # Don't swallow failures here, and keep enough log context to
         # diagnose if the toolchain shifts again.
         run: |
           set -o pipefail
-          cpanm --notest ExtUtils::Manifest 2>&1 | tail -n 100
+          cpanm --notest --installdeps ExtUtils::MakeMaker 2>&1 | tail -n 100
           cpanm --notest XML::LibXML XML::LibXSLT 2>&1 | tail -n 200
 
       - name: Configure
