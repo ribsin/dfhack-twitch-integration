@@ -73,10 +73,20 @@ jobs:
       # *only* thing failing. The verify step below is a fast-fail tripwire
       # so a future image change surfaces *here* with a clear message rather
       # than 30s later mid-codegen.
+      # IMPORTANT: shell: cmd, not bash. `shell: bash` on Windows uses Git for
+      # Windows' bundled /usr/bin/perl, which shadows Strawberry on PATH and
+      # has none of the CPAN modules — that's what made rc7's verify fail
+      # (and is what was actually misleading us in rc3..rc5: every cpanm/perl
+      # invocation under shell: bash was running Git's perl, not Strawberry's).
+      # CMake spawns perl via cmd.exe, which uses the system PATH and finds
+      # Strawberry — same environment we use here, so this verify proves the
+      # exact perl that codegen will use can load the modules. `where perl`
+      # is kept as diagnostic in case the runner image's PATH order ever
+      # changes.
       - name: Verify preinstalled Perl XML modules (DFHack codegen)
-        shell: bash
+        shell: cmd
         run: |
-          set -o pipefail
+          where perl
           perl -V:version
           perl -MXML::LibXML  -e "print 'XML::LibXML  ', XML::LibXML->VERSION,  qq(\n)"
           perl -MXML::LibXSLT -e "print 'XML::LibXSLT ', XML::LibXSLT->VERSION, qq(\n)"

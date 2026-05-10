@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.0-rc8 — CI: run Perl verify under cmd (Git Bash was shadowing Strawberry)
+
+### Fixed
+- **`shell: bash` on Windows runners uses Git for Windows' bundled
+  `/usr/bin/perl`**, which is on `$PATH` *before* the runner image's
+  Strawberry Perl. That bundled perl has a near-empty `@INC`
+  (`/usr/lib/perl5/site_perl`, `/usr/share/perl5/core_perl`, …) and ships
+  none of the CPAN modules we need. rc7's verify step ran under
+  `shell: bash` and failed:
+  `Can't locate XML/LibXML.pm in @INC` — exit 2. The XML modules *are* on
+  the image's Strawberry Perl; we were just calling the wrong `perl`.
+- **This is also the actual root cause of rc3..rc5.** Every `cpanm`
+  invocation we ran was under `shell: bash`, so it executed Git's bundled
+  perl (and, occasionally, Git's bundled cpanm script run under that perl,
+  which is why `@INC` looked Linux-shaped in the rc3 error output). The
+  "broken fatpacked cpanm", "missing `ExtUtils::Manifest`", and "MakeMaker
+  self-upgrade circle" were all symptoms of running cpanm in an environment
+  that *legitimately* had neither the modules nor the toolchain to fix
+  itself. We were never reaching Strawberry. Plugin source is unchanged.
+
+### Changed
+- `.github/workflows/build.yml`:
+  - Verify step switched from `shell: bash` → **`shell: cmd`**. CMake
+    spawns `perl` via `cmd.exe` using the system PATH (which prefers
+    Strawberry), so verifying under `cmd` checks the *exact* perl codegen
+    will use.
+  - Added `where perl` as a diagnostic — if the runner image's PATH order
+    ever shifts, the log will show which perl was actually invoked
+    instead of leaving us guessing for four iterations.
+
 ## v1.0-rc7 — CI: stop installing Perl entirely (DFHack doesn't, neither should we)
 
 ### Fixed
