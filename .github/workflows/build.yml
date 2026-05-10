@@ -12,7 +12,9 @@ on:
   workflow_dispatch:
 
 env:
-  DFHACK_TAG: master   # TODO: pin (e.g. 51.13-r1) once the streamer's DF version is known
+  # Pin to the DFHack release that matches the streamer's install.
+  # Update on each DF/DFHack bump and re-tag the repo to rebuild artifacts.
+  DFHACK_TAG: 53.12-r1
 
 jobs:
   build:

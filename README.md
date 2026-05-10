@@ -38,7 +38,10 @@ Twitch native poll ◀─Helix─ plugin
 
 ## Requirements
 
-- **Dwarf Fortress (Steam) 51.x** + **DFHack 51.x** — same version on both.
+- **Dwarf Fortress (Steam) 53.12** + **DFHack 53.12-r1** — these versions are
+  the pinned targets for the v1.0 line. The plugin DLL is ABI-tied to a
+  specific DFHack build; running it against a different release will refuse
+  to load.
 - **Twitch Affiliate or Partner status.** Twitch's API will not let
   non-Affiliate channels create polls (`403 NOT_AFFILIATE`). This is a hard
   Twitch policy we can't work around.

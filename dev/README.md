@@ -10,23 +10,41 @@ DFHack's bundled Lua can't:
 The Lua scripts in `../scripts_modinstalled/` call into this via
 `require('plugins.dfxtwitch')`.
 
+## Pinned target
+
+This repo's `v1.0` line builds against **DFHack 53.12-r1** (which targets
+**DF 53.12**). If you're running a different DFHack release, change the tag
+in the steps below *and* in `.github/workflows/build.yml` (`DFHACK_TAG`).
+
 ## Building (in-tree against DFHack)
 
 This is the supported path. The plugin is built from inside a DFHack source
 checkout against the same DFHack version your DF install runs.
 
 ```bash
-git clone --recursive https://github.com/DFHack/dfhack.git
+git clone --recursive --branch 53.12-r1 https://github.com/DFHack/dfhack.git
 cd dfhack
-git checkout <your-dfhack-tag>           # e.g. 51.13-r1 — match your install
-ln -s ../../dev plugins/dfxtwitch         # or copy this dev/ folder there
+# copy (or symlink) this dev/ folder into plugins/dfxtwitch
+cp -r ../dfhack-twitch-integration/dev plugins/dfxtwitch
 echo 'add_subdirectory(dfxtwitch)' >> plugins/CMakeLists.txt
-cmake -B build -G Ninja -DBUILD_PLUGINS=ON
+# vendor nlohmann/json (header-only)
+mkdir -p plugins/dfxtwitch/third_party/nlohmann
+curl -L -o plugins/dfxtwitch/third_party/nlohmann/json.hpp \
+  https://github.com/nlohmann/json/releases/latest/download/json.hpp
+# build
+cmake -B build -G Ninja -DBUILD_PLUGINS=ON -DCMAKE_BUILD_TYPE=Release
 cmake --build build --target dfxtwitch
 ```
 
-Result: `build/plugins/dfxtwitch/dfxtwitch.plug.dll`. Drop it into
-`<DF>/hack/plugins/`.
+Result: `build/plugins/dfxtwitch/dfxtwitch.plug.dll` (Windows) or
+`.plug.so` (Linux). Drop it into `<DF>/hack/plugins/`.
+
+### Windows note
+
+Use the **x64 Native Tools Command Prompt for VS 2022** so MSVC is on
+`PATH`, install vcpkg, and pass:
+`-DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static`
+to the configure step. CI does exactly this — see `.github/workflows/build.yml`.
 
 ## Building (out-of-tree, for CI)
 

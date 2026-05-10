@@ -1,6 +1,12 @@
 # Changelog
 
-## v1.0 (in progress) — plugin architecture
+## v1.0 (in progress) — plugin architecture, pinned to DFHack 53.12-r1
+
+### Pinned target
+- **Dwarf Fortress 53.12** + **DFHack 53.12-r1**.
+- `.github/workflows/build.yml` `DFHACK_TAG=53.12-r1` — CI builds the plugin against this exact source tree.
+- `info.txt` updated to `DISPLAYED_VERSION:1.0` and the description now states the DF/DFHack version requirement and the GitHub-Releases location of the matching DLL.
+- `dev/README.md` shows the explicit `git clone --branch 53.12-r1 …` step.
 
 ### Added
 - **Native DFHack plugin** (`dev/`): `dfxtwitch.plug.dll/.so` source.
