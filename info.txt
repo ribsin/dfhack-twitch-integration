@@ -1,0 +1,8 @@
+[ID:DFHACK_TWITCH_INTEGRATION]
+[NUMERIC_VERSION:1]
+[DISPLAYED_VERSION:1.0.0-alpha]
+[EARLIEST_COMPATIBLE_NUMERIC_VERSION:1]
+[EARLIEST_COMPATIBLE_DISPLAYED_VERSION:1.0.0-alpha]
+[AUTHOR:Ribsin]
+[NAME:DFHack Twitch Integration]
+[DESCRIPTION:Lets a Twitch chat interact with a fortress. Viewers claim dwarves, vote on petitions and events, and the streamer keeps full control. Designed to work with an external bot today and a native DFHack plugin (separate download) tomorrow. MIT-licensed clean-room implementation.]

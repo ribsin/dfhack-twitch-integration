@@ -1,0 +1,63 @@
+{
+  "_comment": "Copy this file to <DF>/dfhack-config/DFxTwitch/config.json and fill in your details. NEVER commit a real OAuth token.",
+
+  "channel":      "yourstream",
+  "bot_username": "yourstream",
+  "oauth_token":  "oauth:xxxxxxxxxxxxxxxxxxxxxxxx",
+  "client_id":    "",
+
+  "_oauth_scopes_required": "chat:read chat:edit channel:manage:polls",
+
+  "poll_duration_seconds":         90,
+  "event_interval_minutes":        15,
+  "event_global_cooldown_seconds": 60,
+
+  "bucket_a_chance":      0.70,
+  "bucket_b_chance":      0.30,
+  "bucket_c_chance":      0.05,
+  "bucket_c_enabled":     false,
+  "migrants_race_enabled": true,
+
+  "cooldowns": {
+    "default_per_user_seconds": 5,
+    "overrides": {
+      "!available": 10,
+      "!mods":      300,
+      "!commands":  300
+    }
+  },
+
+  "role_aliases": {
+    "broadcaster": "streamer",
+    "moderator":   "mod",
+    "vip":         "vip",
+    "subscriber":  "sub"
+  },
+
+  "command_map": {
+    "!join":          { "script": "dfxt-claim",                 "tier": "any" },
+    "!me":            { "script": "dfxt-status --u",            "tier": "any" },
+    "!check":         { "script": "dfxt-check --t alive",       "tier": "any" },
+    "!skills":        { "script": "dfxt-check --t skills",      "tier": "any" },
+    "!skillsfull":    { "script": "dfxt-check --t skillsnl",    "tier": "any" },
+    "!health":        { "script": "dfxt-check --t health",      "tier": "any" },
+    "!healthfull":    { "script": "dfxt-check --t healthnl",    "tier": "any" },
+    "!kills":         { "script": "dfxt-check --t kills",       "tier": "any" },
+    "!killsfull":     { "script": "dfxt-check --t killsnl",     "tier": "any" },
+    "!relatives":     { "script": "dfxt-check --t relatives",   "tier": "any" },
+    "!prefs":         { "script": "dfxt-check --t preferences", "tier": "any" },
+    "!prefsfull":     { "script": "dfxt-check --t preferencesnl","tier": "any" },
+    "!available":     { "script": "dfxt-status --available",    "tier": "any" },
+    "!worship":       { "script": "dfxt-religion --worship",    "tier": "any" },
+    "!unworship":     { "script": "dfxt-religion --unworship",  "tier": "any" },
+    "!religions":     { "script": "dfxt-religion --list",       "tier": "any" },
+    "!joinreligion":  { "script": "dfxt-religion --join",       "tier": "vip" },
+    "!leavereligion": { "script": "dfxt-religion --leave",      "tier": "any" },
+    "!leave":         { "script": "dfxt-leave",                 "tier": "sub" },
+    "!squad":         { "script": "dfxt-squad --action join",   "tier": "sub" },
+    "!unsquad":       { "script": "dfxt-squad --action leave",  "tier": "sub" },
+    "!mods":          { "script": "dfxt-mods",                  "tier": "any" },
+    "!ping":          { "script": "dfxt-ping",                  "tier": "any" },
+    "!commands":      { "script": "dfxt-help",                  "tier": "any" }
+  }
+}
