@@ -74,7 +74,7 @@ static int l_poll_create(lua_State* L) {
     luaL_checktype(L, 2, LUA_TTABLE);
     int dur = (int)luaL_checkinteger(L, 3);
     std::vector<std::string> choices;
-    int n = (int)lua_objlen(L, 2);
+    int n = (int)lua_rawlen(L, 2);  // Lua 5.3+ rename of lua_objlen
     for (int i = 1; i <= n && i <= 5; ++i) {
         lua_rawgeti(L, 2, i);
         choices.emplace_back(luaL_checkstring(L, -1));
@@ -156,8 +156,13 @@ void register_lua(lua_State* L) {
     lua_pop(L, 2);
 }
 
-void dispatch_pending() {
-    auto* L = Lua::Core::State;
+// Pump the cross-thread event queue on the main thread.
+// `out` is plumbed through from plugin_onupdate so SafeCall has somewhere to
+// write Lua errors; the lua_State comes from the main DFHack core. The old
+// `Lua::Core::State` namespace variable was removed in DFHack 53.x — the
+// canonical way to fetch the core state is `Core::getInstance().getLuaState()`.
+void dispatch_pending(color_ostream& out) {
+    auto* L = DFHack::Core::getInstance().getLuaState();
     if (!L) return;
     std::vector<evq::Event> batch;
     if (!evq::drain(batch)) return;
@@ -168,7 +173,7 @@ void dispatch_pending() {
             lua_pushstring(L, e.a.c_str());   // user
             lua_pushstring(L, e.b.c_str());   // role
             lua_pushstring(L, e.c.c_str());   // text
-            Lua::SafeCall(*Core::getInstance().getConsole().get(), L, 3, 0);
+            Lua::SafeCall(out, L, 3, 0);
         } else if (e.kind == evq::Kind::PollUpdate && g_poll_cb_ref != LUA_NOREF) {
             lua_rawgeti(L, LUA_REGISTRYINDEX, g_poll_cb_ref);
             lua_pushstring(L, e.a.c_str());   // poll_id
@@ -181,7 +186,7 @@ void dispatch_pending() {
                 lua_pushinteger(L, e.tally[i].second);       lua_setfield(L, -2, "votes");
                 lua_rawseti(L, -2, (int)i + 1);
             }
-            Lua::SafeCall(*Core::getInstance().getConsole().get(), L, 4, 0);
+            Lua::SafeCall(out, L, 4, 0);
         }
     }
 }

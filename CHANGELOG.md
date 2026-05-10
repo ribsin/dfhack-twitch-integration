@@ -1,5 +1,77 @@
 # Changelog
 
+## v1.0-rc10 — Plugin: fix DFHack 53.x API drift (Lua 5.3, Core::getLuaState, NOMINMAX)
+
+### Fixed
+- **First CI run that compiled the plugin's own source surfaced four
+  unrelated mistakes from the v1.0-rc1 era**, all of which had been masked
+  by rc3..rc8's toolchain breakage. Every fix is small; the *combination*
+  is what was hidden.
+
+  1. **`dev/src/lua_api.cpp:77` — `lua_objlen` does not exist in Lua 5.3.**
+     DFHack ships Lua 5.3, which renamed `lua_objlen` to `lua_rawlen`.
+     We were using the Lua 5.1/5.2 spelling. Replaced.
+  2. **`dev/src/lua_api.cpp:160` — `Lua::Core::State` does not exist in
+     DFHack 53.x.** That namespace-scope lua_State variable was removed;
+     the canonical accessor is now `Core::getInstance().getLuaState()`.
+     Every error from line 164 onward (`StackUnwinder` arg, `lua_pushstring`
+     arg, `lua_rawgeti` arg, etc.) was a downstream casualty of `auto* L`
+     becoming `<error type>`. Switched to `Core::getInstance().getLuaState()`.
+  3. **`dev/src/lua_api.cpp:171, :184` — `Console` is not a smart pointer.**
+     We were calling `Core::getInstance().getConsole().get()` as if it were
+     a `shared_ptr<Console>`. It returns `Console&` (a `color_ostream`
+     subclass) directly. Refactored `dispatch_pending` to take a
+     `color_ostream& out` plumbed through from `plugin_onupdate`, which is
+     both correct *and* avoids a global lookup on the tick path.
+  4. **`dev/src/plugin.cpp:50, :54` — `DFHACK_LUA_END` lives in
+     `PluginLua.h`, not `PluginManager.h`.** That header is mentioned in
+     `plugins/examples/skeleton.cpp` as commented-out, with the note "this
+     include is only required if the plugin is going to bind to Lua events,
+     functions, or commands". We bind Lua, so we need it. Added
+     `#include "PluginLua.h"`. The macros `DFHACK_PLUGIN_LUA_FUNCTIONS`,
+     `DFHACK_PLUGIN_LUA_COMMANDS`, and `DFHACK_LUA_END` (which expands to
+     `{ NULL, NULL }`) all live there.
+  5. **`dev/src/plugin.cpp` — `plugin_eval_lua` is not a real DFHack hook.**
+     We had an `extern "C"` `plugin_eval_lua` exported as the registration
+     point. DFHack does not call it. Replaced with explicit registration
+     from `plugin_init`: fetch the core Lua state via
+     `Core::getInstance().getLuaState()` and call `register_lua(L)` directly.
+     This uses the same code path scripts will use when they
+     `require('plugins.dfxtwitch')`, since both share the core state.
+  6. **`dev/src/irc_client.cpp:117` — Windows `<windows.h>` `min`/`max`
+     macros clobber `std::min`.** The C2589 / C2059 cascade was
+     `std::min(backoff * 2, 60)` being preprocessed into
+     `std::(((backoff*2)<(60))?(backoff*2):(60))` — illegal token after
+     `::`. Added `#define NOMINMAX` *before* the `<winsock2.h>` /
+     `<ws2tcpip.h>` includes, with a comment so a future merge doesn't
+     undo it.
+
+### Changed
+- `dev/src/lua_api.cpp`:
+  - `lua_objlen(L, 2)` → `lua_rawlen(L, 2)`.
+  - `dispatch_pending()` → `dispatch_pending(color_ostream& out)`.
+  - `auto* L = Lua::Core::State` → `auto* L = DFHack::Core::getInstance().getLuaState()`.
+  - `Lua::SafeCall(*Core::getInstance().getConsole().get(), ...)` →
+    `Lua::SafeCall(out, ...)` (uses the plumbed-through ostream).
+- `dev/src/plugin.cpp`:
+  - `#include "PluginLua.h"` added.
+  - `plugin_eval_lua` extern removed.
+  - `plugin_init` now calls `register_lua(Core::getInstance().getLuaState())`.
+  - `plugin_onupdate` now passes `out` through to `dispatch_pending`.
+- `dev/src/irc_client.cpp`:
+  - `#define NOMINMAX` (guarded with `#ifndef`) before any Win32 include.
+  - `#include <algorithm>` added explicitly — relying on transitive include
+    via `<atomic>` is fragile and the `std::min` call site is the proximate
+    user.
+
+### Notes
+- Lua scripts in `scripts_modinstalled/` are unchanged.
+- `helix_client.cpp` and `oauth_server.cpp` compiled cleanly in the rc9 CI
+  run — they don't include winsock2 the same way, so the NOMINMAX issue
+  didn't materialise there. Leaving them alone for now; if a future Win32
+  header pull-in surfaces the same `min` macro problem, fix in place.
+- This is the first rc that should produce a `dfxtwitch.plug.dll` artifact.
+
 ## v1.0-rc9 — Plugin: require C++20 (DFHack 53.x uses concepts + `requires`)
 
 ### Fixed

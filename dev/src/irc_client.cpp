@@ -5,9 +5,17 @@
 // events into the cross-thread queue. Auto-PONG, exponential reconnect.
 
 #include "dfxt.hpp"
+#include <algorithm>
 #include <atomic>
 #include <cstring>
 #ifdef _WIN32
+  // Block <windows.h>'s `min` / `max` macros from clobbering std::min/std::max.
+  // Without NOMINMAX, line 117's `std::min(backoff * 2, 60)` was being
+  // preprocessed into `std::(((backoff*2)<(60))?(backoff*2):(60))` — illegal
+  // token after `::`. Must come before any winsock2 / windows.h include.
+  #ifndef NOMINMAX
+    #define NOMINMAX
+  #endif
   #include <winsock2.h>
   #include <ws2tcpip.h>
   #pragma comment(lib, "Ws2_32.lib")
