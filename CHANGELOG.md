@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.0-rc2 — Windows-only, WinHTTP HTTPS
+
+### Changed
+- **HTTPS layer rewritten from libcurl → WinHTTP.** `dev/src/helix_client.cpp`
+  now uses the Win32 `winhttp` API directly. Eliminates the libcurl + vcpkg +
+  OpenSSL dependency chain entirely. Plugin DLL stays smaller; CI no longer
+  needs vcpkg bootstrap (~5 minutes saved per build).
+- **Build matrix reduced to `windows-latest`.** Linux job dropped from
+  `.github/workflows/build.yml`. The `.so` artifact is no longer produced.
+- `dev/CMakeLists.txt`: links against `winhttp` + `ws2_32`. `find_package(CURL)`
+  removed. Hard `if(NOT WIN32) message(FATAL_ERROR …)` gate.
+- README + `dev/README.md` updated to reflect Windows-only status.
+
+### Why
+- The mod is consumed exclusively by Steam-Windows DF streamers; the Linux
+  artifact had no users and cost a CI dependency footprint.
+- vcpkg-pinning libcurl turned out to be the largest source of build flakiness
+  during the v1.0-rc1 attempt (`run-vcpkg@v11` rejects branch refs, requires a
+  full SHA1 — and any pin needs maintenance every few months).
+- WinHTTP ships with every Windows install since Vista. Native Schannel TLS,
+  native proxy detection, no third-party code to ship.
+
 ## v1.0 (in progress) — plugin architecture, pinned to DFHack 53.12-r1
 
 ### Pinned target
@@ -12,7 +34,7 @@
 - **Native DFHack plugin** (`dev/`): `dfxtwitch.plug.dll/.so` source.
   Replaces the old "external bot + chat-log file tail" path entirely.
   - `irc_client.cpp` — raw-TCP Twitch IRC client (auto-PONG, exponential reconnect, IRCv3 tags, role-from-badges)
-  - `helix_client.cpp` — libcurl wrapper around `id.twitch.tv/oauth2/validate` and `api.twitch.tv/helix/polls` (create / get / end)
+  - `helix_client.cpp` — WinHTTP wrapper (was libcurl in earlier RC) around `id.twitch.tv/oauth2/validate` and `api.twitch.tv/helix/polls` (create / get / end)
   - `oauth_server.cpp` — Authorization-Code flow with a `http://localhost:3000` listener, browser-launched
   - `token_store.cpp` — reads / writes `dfhack-config/DFxTwitch/config.json` (token fields only; preserves user-edited keys)
   - `event_queue.cpp` — thread-safe MPSC queue draining on the DFHack main-thread tick
@@ -21,7 +43,7 @@
 - **`dfxt-poll.lua`** — wraps `tw.poll_create` and the 5 s `tw.poll_get` polling loop. Single source of truth for "open a Twitch native poll, await a winner, fire callback".
 - **`dfxt-auth.lua`** — one-shot OAuth runner; opens the browser, captures the code, persists tokens.
 - **`dfxt-doctor.lua`** — health check (plugin loaded, config present, token valid, scopes correct, IRC connected).
-- **`.github/workflows/build.yml`** — cross-builds the plugin on Windows + Linux against a pinned DFHack tag and attaches artifacts to draft Releases.
+- **`.github/workflows/build.yml`** — builds the plugin on Windows against a pinned DFHack tag and attaches the artifact to a draft Release on each tag.
 
 ### Changed
 - `dfxt-petitions.lua` and `dfxt-events.lua`: poll lifecycle delegated to `dfxt-poll`. They now request a poll, get a callback with the winner, and act on it — no more "POLL_OPEN" announcement that the external bot had to interpret.

@@ -6,9 +6,10 @@ control them with chat commands. Petitions and surprise events are decided
 on-stream by **native Twitch polls** — no external bot, no browser overlay,
 just chat votes that show up in the real Twitch poll widget.
 
-> **Status: v1.0-alpha.** Lua scripts are clean-room implementations and run.
-> The `dfxtwitch.plug.dll` source is in `dev/` and builds via the included
-> GitHub Actions workflow against a pinned DFHack version.
+> **Status: v1.0 (Windows).** Lua scripts are clean-room implementations and
+> run. The `dfxtwitch.plug.dll` source is in `dev/` and builds via the included
+> GitHub Actions workflow against a pinned DFHack version. **Windows-only** —
+> the HTTPS path uses WinHTTP, so there is no `.so` for Linux.
 
 ---
 
@@ -19,7 +20,7 @@ The `scripts_modinstalled/dfxt-*.lua` scripts handle every game-side action
 DFHack plugin (`dfxtwitch.plug.dll`, source under `dev/`) handles everything
 the bundled DFHack Lua can't:
 
-- **HTTPS to Twitch Helix** (libcurl) for `polls.create / polls.get / polls.end`
+- **HTTPS to Twitch Helix** (WinHTTP) for `polls.create / polls.get / polls.end`
 - **Twitch IRC over TCP** for chat read & write
 - **OAuth Authorization-Code flow** with a `http://localhost:3000` listener
 
@@ -38,6 +39,7 @@ Twitch native poll ◀─Helix─ plugin
 
 ## Requirements
 
+- **Windows.** The plugin uses WinHTTP for HTTPS, so there is no Linux build.
 - **Dwarf Fortress (Steam) 53.12** + **DFHack 53.12-r1** — these versions are
   the pinned targets for the v1.0 line. The plugin DLL is ABI-tied to a
   specific DFHack build; running it against a different release will refuse
@@ -55,8 +57,7 @@ Twitch native poll ◀─Helix─ plugin
 
 1. Subscribe to the mod on the Steam Workshop **or** drop this folder into
    `<DF>/data/installed_mods/`.
-2. Drop `dfxtwitch.plug.dll` (Windows) or `dfxtwitch.plug.so` (Linux) into
-   `<DF>/hack/plugins/`.
+2. Drop `dfxtwitch.plug.dll` into `<DF>/hack/plugins/`.
 3. Copy `config.example.json` to `<DF>/dfhack-config/DFxTwitch/config.json`
    and fill in `client_id` + `client_secret`.
 4. In DFHack console: `dfxt-auth` — your browser opens, you click

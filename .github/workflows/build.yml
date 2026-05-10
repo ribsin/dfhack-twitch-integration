@@ -1,7 +1,9 @@
-name: Build dfxtwitch plugin
+name: Build dfxtwitch plugin (Windows)
 
-# Builds dfxtwitch.plug.dll/.so against a pinned DFHack source checkout and
-# attaches the artifacts to a draft release on each git tag.
+# Builds dfxtwitch.plug.dll against a pinned DFHack source checkout and
+# attaches the artifact to a draft release on each git tag.
+#
+# Windows-only. Uses WinHTTP for HTTPS, so no vcpkg / libcurl needed.
 #
 # DFHack version targeted: see env.DFHACK_TAG below — pin to the release that
 # matches the streamer's DF + DFHack install. Update on each DF/DFHack bump.
@@ -18,11 +20,7 @@ env:
 
 jobs:
   build:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, ubuntu-22.04]
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -51,34 +49,27 @@ jobs:
           curl -L -o dfhack/plugins/dfxtwitch/third_party/nlohmann/json.hpp \
             https://github.com/nlohmann/json/releases/latest/download/json.hpp
 
-      - name: Install build deps (linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build libcurl4-openssl-dev \
-            libxml-libxml-perl libxml-libxslt-perl
-
-      - name: Install build deps (windows)
-        if: runner.os == 'Windows'
-        uses: lukka/run-vcpkg@v11
+      - name: Set up MSVC env (x64) + Ninja
+        uses: ilammy/msvc-dev-cmd@v1
         with:
-          vcpkgGitCommitId: 'master'
+          arch: x64
+
+      - name: Install Perl XML modules (DFHack codegen)
+        shell: bash
+        run: |
+          cpanm --notest XML::LibXML XML::LibXSLT 2>&1 | tail -n 30 || true
 
       - name: Configure
         working-directory: dfhack
-        shell: bash
+        shell: cmd
         run: |
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            cmake -B build -G Ninja -DBUILD_PLUGINS=ON \
-              -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" \
-              -DVCPKG_TARGET_TRIPLET=x64-windows-static
-          else
-            cmake -B build -G Ninja -DBUILD_PLUGINS=ON
-          fi
+          cmake -B build -G Ninja -DBUILD_PLUGINS=ON -DCMAKE_BUILD_TYPE=Release
 
       - name: Build dfxtwitch
         working-directory: dfhack
-        run: cmake --build build --target dfxtwitch --config Release
+        shell: cmd
+        run: |
+          cmake --build build --target dfxtwitch --config Release
 
       - name: Collect artifact
         shell: bash
@@ -89,7 +80,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: dfxtwitch-${{ matrix.os }}
+          name: dfxtwitch-windows
           path: out/*
 
   release:

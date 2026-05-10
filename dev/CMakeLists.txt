@@ -1,6 +1,9 @@
 # dfxtwitch DFHack plugin — Copyright (c) 2025 Ribsin — MIT
 #
-# This CMakeLists.txt is intended to be used in two ways:
+# Windows-only. HTTPS via WinHTTP (built into Windows since Vista),
+# so no vcpkg / libcurl / OpenSSL dependency.
+#
+# Two ways to build:
 #
 #   1. Drop this folder into <dfhack-source>/plugins/dfxtwitch/
 #      and add `add_subdirectory(dfxtwitch)` to plugins/CMakeLists.txt
@@ -9,14 +12,18 @@
 #   2. Out-of-tree build pointed at a DFHack source checkout via
 #      -DDFHACK_SOURCE_DIR=/path/to/dfhack — useful for CI.
 #
-# Either way the result is `dfxtwitch.plug.dll` (Windows) or
-# `dfxtwitch.plug.so` (Linux), to be dropped into <DF>/hack/plugins/.
+# Either way the result is `dfxtwitch.plug.dll`,
+# to be dropped into <DF>/hack/plugins/.
 
 cmake_minimum_required(VERSION 3.21)
 
 project(dfxtwitch CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(NOT WIN32)
+    message(FATAL_ERROR "dfxtwitch is Windows-only (uses WinHTTP).")
+endif()
 
 set(PLUGIN_SRCS
     src/plugin.cpp
@@ -30,7 +37,7 @@ set(PLUGIN_SRCS
 
 if(COMMAND DFHACK_PLUGIN)
     # In-tree build (preferred). DFHack provides this macro.
-    DFHACK_PLUGIN(dfxtwitch ${PLUGIN_SRCS} LINK_LIBRARIES CURL::libcurl)
+    DFHACK_PLUGIN(dfxtwitch ${PLUGIN_SRCS} LINK_LIBRARIES winhttp ws2_32)
 else()
     # Out-of-tree skeleton: build a shared library named dfxtwitch.plug
     # against a checked-out DFHack tree.
@@ -48,8 +55,7 @@ else()
         ${DFHACK_SOURCE_DIR}/library/proto
         ${DFHACK_SOURCE_DIR}/depends/lua/include
     )
-    find_package(CURL REQUIRED)
-    target_link_libraries(dfxtwitch PRIVATE CURL::libcurl)
+    target_link_libraries(dfxtwitch PRIVATE winhttp ws2_32)
 endif()
 
 # vendored single-header JSON
