@@ -119,6 +119,13 @@ jobs:
     needs: build
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
+    # softprops/action-gh-release POSTs to /repos/.../releases, which the
+    # default GITHUB_TOKEN can't do unless we ask. rc10's build succeeded
+    # and the artifact uploaded fine; the release step 403'd here. Scoped
+    # to this job (not workflow-top-level) so the build job stays at
+    # least-privilege.
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with: { path: artifacts }

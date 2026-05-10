@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.0-rc11 — CI: grant `contents: write` to the release job
+
+### Fixed
+- **rc10's build *succeeded*** — `dfxtwitch.plug.dll` compiled, the
+  artifact uploaded — but the `release` job got 403 from
+  `softprops/action-gh-release@v2`:
+    `Resource not accessible by integration ... POST /repos/.../releases`
+  GitHub-Actions' default `GITHUB_TOKEN` is configured read-only on this
+  repo, so any write-side REST endpoint (creating Releases included)
+  needs an explicit `permissions:` grant. We never set one, so the action
+  inherited the read-only default and couldn't post the draft release.
+
+### Changed
+- `.github/workflows/build.yml`:
+  - Added `permissions: contents: write` to the `release` job. Scoped to
+    that job — not workflow-top-level — so the long-lived `build` job
+    stays at least-privilege (read-only contents, no other scopes).
+
+### Notes
+- Plugin source is unchanged from rc10. This is a workflow-permission
+  fix only.
+- This rc *should* close out the v1.0-rc cycle: build green, artifact
+  attached to a draft Release, ready for promotion to v1.0.
+
 ## v1.0-rc10 — Plugin: fix DFHack 53.x API drift (Lua 5.3, Core::getLuaState, NOMINMAX)
 
 ### Fixed
