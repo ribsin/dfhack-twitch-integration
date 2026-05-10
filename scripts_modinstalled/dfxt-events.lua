@@ -82,14 +82,15 @@ local function open_poll(bucket, name)
     local def = BUCKETS[bucket][name]
     if not def then return false end
     local choices = type(def.choices) == 'function' and def.choices() or def.choices
-    if not choices or #choices == 0 then return false end
+    if not choices then return false end
+    -- Twitch native polls need 2-5 choices; pad / cap as required.
+    if #choices < 2 then choices[#choices+1] = 'No' end
+    while #choices > 5 do table.remove(choices) end
     local cd = cfg.poll_duration_seconds or 90
-    store.poll_state = {
-        open      = true,
-        type      = 'event',
-        ref_id    = bucket..':'..name,
-        end_tick  = df.global.cur_year_tick + cd * 60,
-    }
+
+    local poll = reqscript('dfxt-poll')
+    if poll.busy() then return false end
+
     store.event_budget.last_event_tick = df.global.cur_year_tick
     if bucket == 'C' then
         store.event_budget.bucket_c_session_used =
@@ -97,8 +98,11 @@ local function open_poll(bucket, name)
         store.event_budget.bucket_c_last_year = df.global.cur_year
     end
     C.popup('Event Poll', def.q)
-    C.say(('POLL_OPEN event=%s/%s duration=%ds choices=%s'):format(
-        bucket, name, cd, table.concat(choices, '|')))
+    poll.open(def.q, choices, cd, function(winner, status)
+        pcall(dfhack.run_command, 'dfxt-events',
+              'resolve', '--name', bucket..':'..name,
+              '--winner', tostring(winner or '(none)'))
+    end)
     return true
 end
 

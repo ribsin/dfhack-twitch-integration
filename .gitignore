@@ -1,6 +1,7 @@
 # DFHack runtime — never commit a streamer's secrets
 dfhack-config/DFxTwitch/config.json
 dfhack-config/DFxTwitch/chatlog.txt
+dfhack-config/DFxTwitch/chat-out.txt
 dfhack-config/DFxTwitch/petitions.log
 
 # DF / OS junk
@@ -16,7 +17,7 @@ Thumbs.db
 .idea/
 *.code-workspace
 
-# Build artifacts (when the plugin lands)
+# Build artifacts
 dev/build/
 dev/CMakeFiles/
 dev/CMakeCache.txt
@@ -25,3 +26,7 @@ dev/*.lib
 dev/*.exp
 dev/*.pdb
 dev/*.obj
+dev/*.so
+dev/*.dylib
+# Vendored deps (CI fetches fresh)
+dev/third_party/nlohmann/

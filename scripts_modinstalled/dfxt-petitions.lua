@@ -80,7 +80,8 @@ end
 
 -- ----- tick — try to open the next poll -----
 if sub == 'tick' then
-    if store.poll_state.open then return end           -- already a poll open
+    local poll = reqscript('dfxt-poll')
+    if poll.busy() then return end                     -- a poll is already open
     if #store.petition_queue == 0 then return end
     local block = siege_or_megabeast_active()
     if block then
@@ -93,15 +94,16 @@ if sub == 'tick' then
         table.remove(store.petition_queue, 1); return
     end
     local cfg = C.load_config()
-    store.poll_state = {
-        open      = true,
-        type      = 'petition',
-        ref_id    = agid,
-        end_tick  = df.global.cur_year_tick + (cfg.poll_duration_seconds * 60),
-    }
     C.popup('Petition Poll', summarize(ag)..' — chat is voting.')
-    C.say(('POLL_OPEN petition #%d duration=%ds — Approve / Deny'):format(
-        agid, cfg.poll_duration_seconds))
+    poll.open(
+        ('Petition #%d'):format(agid),
+        { 'Approve', 'Deny' },
+        cfg.poll_duration_seconds or 90,
+        function(winner, status)
+            local result = (winner == 'Deny') and 'deny' or 'approve'
+            pcall(dfhack.run_command, 'dfxt-petitions',
+                  'resolve', '--id', tostring(agid), '--result', result)
+        end)
     return
 end
 

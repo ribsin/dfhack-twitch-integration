@@ -128,6 +128,17 @@ function say(text)
     if text == nil or text == '' then return end
     text = tostring(text):gsub('[\r\n]+', ' '):sub(1, 480)
     print(text)
+
+    -- Primary path: native plugin sends directly over IRC.
+    local ok, tw = pcall(require, 'plugins.dfxtwitch')
+    if ok and tw and tw.send_chat then
+        local sent = false
+        pcall(function() sent = tw.send_chat(text) end)
+        if sent then return end
+    end
+
+    -- Fallback: append to chat-out.txt for any external file-watcher bot.
+    -- Only used when the plugin is not loaded or not yet connected.
     ensure_dir()
     local f = io.open(CHAT_OUT, 'a')
     if f then

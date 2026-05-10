@@ -1,28 +1,47 @@
 # Changelog
 
-## v1.0-alpha (in progress)
+## v1.0 (in progress) — plugin architecture
+
+### Added
+- **Native DFHack plugin** (`dev/`): `dfxtwitch.plug.dll/.so` source.
+  Replaces the old "external bot + chat-log file tail" path entirely.
+  - `irc_client.cpp` — raw-TCP Twitch IRC client (auto-PONG, exponential reconnect, IRCv3 tags, role-from-badges)
+  - `helix_client.cpp` — libcurl wrapper around `id.twitch.tv/oauth2/validate` and `api.twitch.tv/helix/polls` (create / get / end)
+  - `oauth_server.cpp` — Authorization-Code flow with a `http://localhost:3000` listener, browser-launched
+  - `token_store.cpp` — reads / writes `dfhack-config/DFxTwitch/config.json` (token fields only; preserves user-edited keys)
+  - `event_queue.cpp` — thread-safe MPSC queue draining on the DFHack main-thread tick
+  - `lua_api.cpp` — exposes `require('plugins.dfxtwitch')` with `connect`, `send_chat`, `auth_login`, `validate_token`, `poll_create / poll_get / poll_cancel`, `set_message_handler`, `set_poll_handler`, `status`
+- **`dfxt-router.lua`** — chat-line dispatcher. Registers with `tw.set_message_handler`; performs role gate, per-user cooldown, and arg-shaping for every viewer command.
+- **`dfxt-poll.lua`** — wraps `tw.poll_create` and the 5 s `tw.poll_get` polling loop. Single source of truth for "open a Twitch native poll, await a winner, fire callback".
+- **`dfxt-auth.lua`** — one-shot OAuth runner; opens the browser, captures the code, persists tokens.
+- **`dfxt-doctor.lua`** — health check (plugin loaded, config present, token valid, scopes correct, IRC connected).
+- **`.github/workflows/build.yml`** — cross-builds the plugin on Windows + Linux against a pinned DFHack tag and attaches artifacts to draft Releases.
+
+### Changed
+- `dfxt-petitions.lua` and `dfxt-events.lua`: poll lifecycle delegated to `dfxt-poll`. They now request a poll, get a callback with the winner, and act on it — no more "POLL_OPEN" announcement that the external bot had to interpret.
+- `dfxt-overlay.lua`: dropped `chatlog.txt` file-tail logic. The chat overlay buffer is filled by `dfxt-router` directly. Heartbeat still drives `dfxt-poll.tick`, `dfxt-leave`, `dfxt-petitions`, and `dfxt-events`.
+- `dfxt-common.say()`: primary path is now `tw.send_chat` (IRC). The `chat-out.txt` append is kept as a fallback for streams running without the plugin.
+- `_onload.lua`: connects IRC, starts the router, and validates the token at save load.
+- `config.example.json`: replaced bot-era `bot_username` / `oauth_token`-as-chat-token with the Helix-era `client_id` / `client_secret` / `oauth_token` / `refresh_token` / `channel_id` set; documents required scopes and the `http://localhost:3000` redirect URI.
+
+### Removed
+- The "external Twitch bot reads chatlog.txt and writes to chat-out.txt" indirection. The plugin handles both directions in-process.
+
+### Notes
+- Affiliate or Partner status is required for Twitch native polls. The mod will not attempt poll creation if `channel_id` is blank or Helix returns 403; petitions will fall back to popup-only resolution.
+- The plugin is a single self-contained DLL/SO with statically linked libcurl. No additional runtime dependencies.
+
+---
+
+## v1.0-alpha — initial skeleton
 
 ### Added
 - Repository skeleton (`info.txt`, `LICENSE` MIT, `README.md`, `SPEC.md`, `.gitignore`).
-- `scripts_modinstalled/` clean-room rewrite of all viewer-interaction scripts under the `dfxt-` prefix:
-  - `dfxt-claim.lua`     — `!join` (FCFS / migrant / enemy)
-  - `dfxt-status.lua`    — `!me`, `!available`
-  - `dfxt-check.lua`     — `!check`, `!skills(full)`, `!health(full)`, `!kills(full)`, `!relatives`, `!prefs(full)`
-  - `dfxt-religion.lua`  — `!worship`, `!unworship`, `!religions`, `!joinreligion`, `!leavereligion`
-  - `dfxt-leave.lua`     — `!leave [days]`
-  - `dfxt-squad.lua`     — `!squad`, `!unsquad`
-  - `dfxt-mods.lua`      — `!mods` (450-char cap)
-  - `dfxt-ping.lua`      — `!ping`
-  - `dfxt-help.lua`      — `!commands`
-  - `dfxt-petitions.lua` — petition queue + 90s polls, blocked by siege/FB
-  - `dfxt-events.lua`    — event scheduler + bucket A/B/C voting
-  - `dfxt-overlay.lua`   — DF-side chat-log overlay
-  - `dfxt-common.lua`    — shared utilities (persist-table, role gate, name lookup, JSON config loader, chat sink)
-- `_onload.lua` startup hint that detects the future plugin and prints the right setup message.
-- `dfhack-config/DFxTwitch/config.example.json` template with full settings.
+- `scripts_modinstalled/` clean-room rewrite of all viewer-interaction scripts under the `dfxt-` prefix.
+- `_onload.lua` startup hint.
+- `dfhack-config/DFxTwitch/config.example.json` template.
 - `dev/` reserved for the native plugin source.
 
 ### Notes
-- This is a clean-room implementation. No code is taken from any third-party Twitch-integration mod.
-- Chat-log polling uses the same file the existing external bot writes to (`dfhack-config/DFxTwitch/chatlog.txt`), so anyone running an external bot today gets a soft-upgrade path.
-- All scripts no-op gracefully on bad input. None throw `qerror` from chat-driven paths.
+- Clean-room implementation; no code taken from any third-party Twitch-integration mod.
+- All scripts no-op gracefully on bad input — none throw `qerror` from chat-driven paths.

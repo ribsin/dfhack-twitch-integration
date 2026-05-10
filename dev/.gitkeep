@@ -1,3 +1,0 @@
-Reserved for the C++ DFHack plugin source (dfxtwitch.plug.dll).
-The plugin lives in this folder when work begins on it.
-Compiled .dll/.lib/.pdb are gitignored — release builds go on GitHub Releases.
