@@ -63,39 +63,40 @@ jobs:
           # toolset 14.30..14.44.
           vsversion: 2022
 
-      # Pin our own Strawberry Perl. The Perl that ships on the windows-2022
-      # image (currently Strawberry 5.42) has a fatpacked `cpanm` that's
-      # incompatible with the modern ExtUtils::MakeMaker it pulls in:
-      #   "Attempt to call undefined import method ... via package
-      #    CPAN::Meta::Prereqs"
-      # …and it lacks ExtUtils::Manifest, so MakeMaker's Configure step also
-      # dies with "Can't locate ExtUtils/Manifest.pm in @INC". A clean,
-      # version-pinned Strawberry sidesteps both bugs.
-      - name: Install Perl (pinned Strawberry)
-        uses: shogo82148/actions-setup-perl@v1
-        with:
-          perl-version: '5.38'
-          distribution: strawberry
+      # Install the *full* Strawberry Perl 5.38 distribution via Chocolatey.
+      # Strawberry's "Standard" distribution bundles XML::LibXML + XML::LibXSLT
+      # *prebuilt* (along with ExtUtils::MakeMaker, ExtUtils::Manifest,
+      # Pod::Man, and the Alien::Libxml2 chain). This skips cpanm entirely
+      # and dodges every bug we hit in rc3..rc5:
+      #   - rc3: image's broken fatpacked cpanm (CPAN::Meta::Prereqs error)
+      #   - rc4: missing ExtUtils::Manifest in @INC
+      #   - rc5: cpanm circular-resolution bailout when MakeMaker upgrade
+      #          and Pod::Man install were both in flight
+      # Pinned to 5.38.2.2 — the last 5.38 LTS-line release. --force
+      # --allow-downgrade lets us replace the runner image's preinstalled
+      # Strawberry 5.42 (which has the busted cpanm).
+      - name: Install Strawberry Perl 5.38 (full distribution)
+        shell: powershell
+        run: |
+          choco install strawberryperl `
+            --version=5.38.2.2 -y --no-progress --force --allow-downgrade
+          # Prepend our pinned Strawberry to PATH for the rest of the job.
+          # Choco's package updates the *machine* PATH but Actions steps need
+          # an explicit GITHUB_PATH bump to see it on this run.
+          "C:\strawberry\c\bin"         | Add-Content -Path $env:GITHUB_PATH
+          "C:\strawberry\perl\site\bin" | Add-Content -Path $env:GITHUB_PATH
+          "C:\strawberry\perl\bin"      | Add-Content -Path $env:GITHUB_PATH
 
-      - name: Install Perl XML modules (DFHack codegen)
+      - name: Verify Perl XML modules (DFHack codegen)
         shell: bash
-        # DFHack's codegen step needs XML::LibXML to chew library/xml.
-        #
-        # We pre-install ExtUtils::MakeMaker's *deps* (Pod::Man, etc.) before
-        # the real install, to break a known cpanm circular-dependency trap:
-        # if Alien::Libxml2 / XML::LibXML triggers a MakeMaker upgrade, cpanm
-        # Configures the new MakeMaker, then tries to install Pod::Man
-        # (podlators), whose Makefile.PL bails because the *new* MakeMaker
-        # isn't installed yet — cascading failure all the way back up. By
-        # installing MakeMaker's deps via --installdeps first, the upgrade
-        # path can complete without circling.
-        #
-        # Don't swallow failures here, and keep enough log context to
-        # diagnose if the toolchain shifts again.
+        # Strawberry ships these prebuilt; if a future Strawberry drops them,
+        # this step fails *here* with a clear message rather than two steps
+        # later inside DFHack's codegen.
         run: |
           set -o pipefail
-          cpanm --notest --installdeps ExtUtils::MakeMaker 2>&1 | tail -n 100
-          cpanm --notest XML::LibXML XML::LibXSLT 2>&1 | tail -n 200
+          perl -V:version
+          perl -MXML::LibXML  -e "print 'XML::LibXML  ', XML::LibXML->VERSION,  qq(\n)"
+          perl -MXML::LibXSLT -e "print 'XML::LibXSLT ', XML::LibXSLT->VERSION, qq(\n)"
 
       - name: Configure
         working-directory: dfhack

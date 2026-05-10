@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.0-rc6 — CI: skip cpanm; install full Strawberry Perl via Chocolatey
+
+### Fixed
+- **CI Perl step kept hitting cpanm circular-resolution bailouts.** rc5's
+  `--installdeps ExtUtils::MakeMaker` reproduced the same cycle one step
+  further out: cpanm Configured `ExtUtils::MakeMaker-7.78`, started
+  installing `Pod::Man` (`podlators-v6.0.2`), and bailed out with
+  `Module 'ExtUtils::MakeMaker' is not installed` — its safety mechanism
+  refusing to recurse into a module that's already in flight in the parent
+  resolution. Plugin source is unchanged.
+
+### Changed
+- `.github/workflows/build.yml`:
+  - **Removed** `shogo82148/actions-setup-perl` and the entire `cpanm` step.
+  - **Added** a Chocolatey install of the **full** Strawberry Perl 5.38.2.2
+    distribution (`choco install strawberryperl --version=5.38.2.2 -y
+    --no-progress --force --allow-downgrade`). Strawberry's Standard
+    distribution bundles `XML::LibXML` + `XML::LibXSLT` *prebuilt*, along
+    with the `Alien::Libxml2`, `ExtUtils::MakeMaker`, `ExtUtils::Manifest`,
+    and `Pod::Man` chain — so cpanm never has to resolve any of it. This
+    sidesteps every Perl bug we've hit since rc3 in one move.
+  - **Added** a verification step (`perl -MXML::LibXML -e ...`) that fails
+    fast with a clear message if a future Strawberry drops the bundled
+    modules, instead of letting DFHack's codegen explode two steps later.
+
 ## v1.0-rc5 — CI: break cpanm MakeMaker self-upgrade circle
 
 ### Fixed
