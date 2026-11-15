@@ -36,10 +36,11 @@ pinned to DFHack 53.12-r1.
   repaired, replaced, or modified.
 - A new CMake configure/build used MSYS2 Perl 5.40.3, with
   XML::LibXML 2.0210 and XML::LibXSLT 2.003000. CMake's actual absolute-path
-  code-generation command completed successfully from a clean source copy.
+  code-generation command completed successfully from a clean source copy and
+  a fresh FetchContent dependency cache.
 - The `dfxtwitch` Release target completed successfully. The generated
   `codegen.out.xml` is 5,731,997 bytes, and the DLL exists at
-  `F:\Df mods\dfhack-twitch-integration-build-53.17-clean\plugins\external\dfxtwitch\Release\dfxtwitch.plug.dll`
+  `F:\Df mods\dfhack-twitch-integration-build-53.17-fullclean\plugins\external\dfxtwitch\Release\dfxtwitch.plug.dll`
   (299,008 bytes). This is a clean build result, not a runtime test.
 - Automated feature tests, Twitch integration tests, in-game tests, and
   clean-install tests remain unrun.
