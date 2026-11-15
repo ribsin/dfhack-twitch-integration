@@ -14,45 +14,59 @@ The Lua scripts in `../scripts_modinstalled/` call into this via
 > Linux build path. If you need a portable build, swap `helix_client.cpp` for
 > a libcurl version — but that's out of scope for the v1.0 line.
 
+> **Security:** Twitch chat uses WinHTTP WebSockets over TLS. The client
+> secret and access/refresh tokens are encrypted with Windows DPAPI for the
+> current Windows user. A clean Windows build now succeeds, but OAuth, DPAPI,
+> Twitch networking, and in-game behavior have not been runtime-tested. Do not
+> treat the plugin as release-verified.
+
 ## Pinned target
 
-This repo's `v1.0` line builds against **DFHack 53.12-r1** (which targets
-**DF 53.12**). If you're running a different DFHack release, change the tag
-in the steps below *and* in `.github/workflows/build.yml` (`DFHACK_TAG`).
+The selected build target is **DFHack 53.17-r1** for **DF 53.17**. A clean
+Windows x64 Release build has succeeded against this version, but runtime
+compatibility is not yet verified. The GitHub workflow still targets
+DFHack 53.12-r1 and must not be used as evidence for a 53.17 release.
 
-## Building (in-tree against DFHack)
+## Building (Windows, DFHack 53.17-r1)
 
-This is the supported path. The plugin is built from inside a DFHack source
-checkout against the same DFHack version your DF install runs. Use the
-**x64 Native Tools Command Prompt for VS 2022** so MSVC is on `PATH`.
+Use an x64 Visual Studio 2022 C++ toolchain, CMake 3.21 or newer, Git with
+submodule support, and MSYS2 Perl with `XML::LibXML` and `XML::LibXSLT`
+available. The verified build used Perl 5.40.3 from MSYS2. Set up a fresh,
+recursive DFHack checkout: DFHack's XML generator writes generated headers
+into the source tree, so a separate binary build directory alone does not
+make a reused checkout clean.
 
-```cmd
-git clone --recursive --branch 53.12-r1 https://github.com/DFHack/dfhack.git
-cd dfhack
-:: copy (or symlink) this dev/ folder into plugins/dfxtwitch
-xcopy /E /I ..\dfhack-twitch-integration\dev plugins\dfxtwitch
-echo add_subdirectory(dfxtwitch) >> plugins\CMakeLists.txt
-:: vendor nlohmann/json (header-only)
-mkdir plugins\dfxtwitch\third_party\nlohmann
-curl -L -o plugins\dfxtwitch\third_party\nlohmann\json.hpp ^
-  https://github.com/nlohmann/json/releases/latest/download/json.hpp
-:: build
-cmake -B build -G Ninja -DBUILD_PLUGINS=ON -DCMAKE_BUILD_TYPE=Release
-cmake --build build --target dfxtwitch
+From PowerShell, adjust the source paths to your machine:
+
+```powershell
+$dfhack = 'C:\src\dfhack-53.17-r1'
+$build = 'C:\build\dfxtwitch-53.17-r1'
+git clone --recursive --branch 53.17-r1 https://github.com/DFHack/dfhack.git $dfhack
+New-Item -ItemType Directory -Force "$dfhack\plugins\external\dfxtwitch"
+Copy-Item 'F:\path\to\dfhack-twitch-integration\dev\*' `
+  "$dfhack\plugins\external\dfxtwitch" -Recurse -Force
+$env:PATH = 'C:\msys64\usr\bin;' + $env:PATH
+perl -MXML::LibXML -MXML::LibXSLT -e "print qq(XML modules loaded\n)"
+cmake -S $dfhack -B $build -G 'Visual Studio 17 2022' -A x64 `
+  -DBUILD_PLUGINS=ON -DBUILD_SUPPORTED=OFF `
+  -DBUILD_TESTS=OFF -DBUILD_DOCS=OFF `
+  -DPERL_EXECUTABLE=C:/msys64/usr/bin/perl.exe
+cmake --build $build --target dfxtwitch --config Release --parallel 4
 ```
 
-Result: `build/plugins/dfxtwitch/dfxtwitch.plug.dll`. Drop it into
-`<DF>/hack/plugins/`.
+The generated plugin is at
+`$build\plugins\external\dfxtwitch\Release\dfxtwitch.plug.dll`. The supported
+DFHack external-plugin mechanism discovers this folder; do not edit
+`plugins/CMakeLists.txt`.
 
-## Building (out-of-tree, for CI)
+The clean build was verified with MSYS2 Perl because Strawberry Perl 5.40.5.1
+reproducibly exited with `0xC0000005` during shutdown after producing the XML
+outputs. The exact native cause is unknown; the Strawberry Perl installation
+was not changed. The workaround is to select MSYS2 Perl and put its `usr\bin`
+directory on `PATH`. Compilation does not establish runtime compatibility.
 
-```cmd
-cmake -S dev -B dev\build -G Ninja -DDFHACK_SOURCE_DIR=C:\path\to\dfhack
-cmake --build dev\build
-```
-
-This produces a stand-alone shared library; useful for tinkering but you'll
-still need DFHack's exported headers from a real source tree.
+The standalone out-of-tree CMake fallback is experimental; use the DFHack
+external-plugin build above to produce an installable plugin.
 
 ## Dependencies
 

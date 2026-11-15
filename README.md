@@ -50,17 +50,14 @@ Twitch native poll <-- Helix -- plugin
 
 ## Compatibility
 
-- Dwarf Fortress (Steam) 53.12
-- DFHack 53.12-r1
+- Build target: Dwarf Fortress 53.17 with DFHack 53.17-r1. A clean Windows
+  x64 Release build has been verified.
+- Runtime compatibility is not yet tested; compilation alone does not verify
+  plugin loading or gameplay behavior.
+- The GitHub build/release workflow remains pinned to DFHack 53.12-r1, so its
+  artifacts are not built for the current 53.17 target.
 - Windows 10/11; the plugin uses WinHTTP WebSockets, and older Windows
   versions have not been validated.
-
-The build workflow is currently pinned to DFHack 53.12-r1 and Dwarf Fortress
-53.12. A local Release target compile completed against DFHack 53.17-r1, but
-runtime compatibility has not been tested. That incremental build used
-generated headers already present; a clean XML code-generation run remains
-blocked by a Perl crash. The plugin ABI depends on the DFHack version, so this
-compile alone does not establish compatibility.
 
 ## Requirements
 

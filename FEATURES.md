@@ -1,26 +1,27 @@
 # DFHack Twitch Integration — Feature Inventory
 
 Baseline recorded 2026-11-15. This inventory describes the current source and
-documentation; it does not certify that the mod builds or works. The repository
-already contained local edits when this inventory was created. Those edits have
-not been treated as verified behavior.
+documentation; it does not certify that the mod works at runtime. The
+repository already contained local edits when this inventory was created.
 
-No automated, in-game, Twitch integration, or clean-install tests were run for
-this baseline. At inventory time, the workflow targeted DFHack 53.12-r1 /
-Dwarf Fortress 53.12. The owner has since selected DFHack 53.17-r1 /
-Dwarf Fortress 53.17 as the target. The workflow remains pinned to 53.12-r1;
-a local plugin compile against 53.17-r1 has succeeded, but runtime compatibility
-has not been tested.
+No automated feature, Twitch integration, in-game, or clean-install tests have
+been run. A clean Windows x64 Release build of `dfxtwitch` against DFHack
+53.17-r1 has now succeeded, including XML code generation. This verifies
+compilation only, not runtime compatibility. The GitHub workflow remains
+pinned to DFHack 53.12-r1.
 
 ## Verification update (2026-11-15)
 
 - The separate DFHack 53.17-r1 checkout is at the expected commit, has all 11
   submodules initialized, and remains clean. The older `C:\dfhack-src`
   checkout was left untouched.
-- CMake 3.31.6 generated the `dfxtwitch` Visual Studio 2022 x64 target.
-- The staged `nlohmann/json.hpp` exists and matches the pinned 3.12.0
-  SHA-256. No dependency copy or download was needed.
-- The generated header command uses
+- A separate source copy at DFHack commit
+  `3bc63a220af608e1cf20b123dc45bc0a22e296ab` was used for the clean build.
+  Its submodule contents came from the verified pinned commits; the original
+  DFHack checkout and project working tree were not modified by the build.
+- CMake 3.31.6 configured the `dfxtwitch` Visual Studio 2022 x64 Release
+  target. The project's `nlohmann/json.hpp` matches the pinned 3.12.0 SHA-256.
+- The previous Strawberry Perl reproduction used
   `%LOCALAPPDATA%\StrawberryPerl\perl\bin\perl.exe` (Perl 5.40.5.1), with
   XML::LibXML 2.0213 and XML::LibXSLT 2.003000. The modules load when
   Strawberry Perl's `c\bin` is added to `PATH`; `PERL5LIB` and `PERL5OPT` are
@@ -31,16 +32,17 @@ has not been tested.
   Perl shutdown. Windows Error Reporting identifies `ntdll.dll` at offset
   `0x000000000001a12d`; the specific native component causing the fault is
   not identified. Process-local `PERL_DESTRUCT_LEVEL` values 0, 1, and 2 did
-  not prevent it.
-- A subsequent `cmake --build C:\dfhack-build-53.17-r1-twitch --target
-  dfxtwitch --config Release` completed successfully and compiled the plugin
-  sources. It consumed the generated headers from the earlier codegen run;
-  the incremental build did not rerun the crashing generator. The resulting
-  `dfxtwitch.plug.dll` exists at
-  `C:\dfhack-build-53.17-r1-twitch\plugins\external\dfxtwitch\Release\dfxtwitch.plug.dll`
-  (299,008 bytes). A clean/reproducible build remains blocked by codegen.
-- No automated feature tests, Twitch integration tests, or in-game tests were
-  run.
+  not prevent it. The exact native cause remains unknown; Perl was not
+  repaired, replaced, or modified.
+- A new CMake configure/build used MSYS2 Perl 5.40.3, with
+  XML::LibXML 2.0210 and XML::LibXSLT 2.003000. CMake's actual absolute-path
+  code-generation command completed successfully from a clean source copy.
+- The `dfxtwitch` Release target completed successfully. The generated
+  `codegen.out.xml` is 5,731,997 bytes, and the DLL exists at
+  `F:\Df mods\dfhack-twitch-integration-build-53.17-clean\plugins\external\dfxtwitch\Release\dfxtwitch.plug.dll`
+  (299,008 bytes). This is a clean build result, not a runtime test.
+- Automated feature tests, Twitch integration tests, in-game tests, and
+  clean-install tests remain unrun.
 
 ## Status totals
 
@@ -59,7 +61,7 @@ has not been tested.
 
 | Feature | Description | Status | Priority | Evidence | Missing work |
 |---|---|---|---|---|---|
-| Supported DF/DFHack target | Build and test the selected release target, DF 53.17 / DFHack 53.17-r1. | **Partially implemented** | High | [`build.yml`](./.github/workflows/build.yml), [`dev/README.md`](./dev/README.md), [`README.md`](./README.md) | The plugin compiled for 53.17-r1 using existing generated headers, but clean code generation, runtime compatibility, and integration tests remain unverified. The workflow still targets 53.12-r1; do not claim support until the remaining checks pass. |
+| Supported DF/DFHack target | Build and test the selected release target, DF 53.17 / DFHack 53.17-r1. | **Partially implemented** | High | [`build.yml`](./.github/workflows/build.yml), [`dev/README.md`](./dev/README.md), [`README.md`](./README.md) | A clean Release build and code generation now succeed for 53.17-r1. Runtime compatibility and integration tests remain unverified, and the workflow still targets 53.12-r1; do not claim runtime support until the remaining checks pass. |
 | OAuth architecture redesign | Reconsider the current Windows desktop authorization-code flow. | **Deferred** | Critical | [`oauth_server.cpp`](./dev/src/oauth_server.cpp), [`lua_api.cpp`](./dev/src/lua_api.cpp), [`config.example.json`](./config.example.json) | The owner chose to defer architecture changes until the existing flow is tested. Keep the current model for now; test it and revisit only with approval. |
 
 ## Native plugin and networking
@@ -136,11 +138,11 @@ has not been tested.
 
 | Feature | Description | Status | Priority | Evidence | Missing work |
 |---|---|---|---|---|---|
-| Reproducible plugin build and release workflow | Build the Windows plugin against a pinned DFHack checkout and produce a release artifact. | **Partially implemented** | Critical | [`build.yml`](./.github/workflows/build.yml), [`dev/CMakeLists.txt`](./dev/CMakeLists.txt) | The JSON dependency is pinned to 3.12.0 and its staged header hash matches. The workflow still targets 53.12-r1. The `dfxtwitch` Release target compiled against 53.17-r1 and produced a DLL using existing generated headers, but the XML code generator still crashes during Perl shutdown, so a clean/reproducible build remains blocked. Fix the generator environment safely, then verify a clean target build and release artifact. |
+| Reproducible plugin build and release workflow | Build the Windows plugin against a pinned DFHack checkout and produce a release artifact. | **Partially implemented** | Critical | [`build.yml`](./.github/workflows/build.yml), [`dev/CMakeLists.txt`](./dev/CMakeLists.txt) | A clean `dfxtwitch` Release build against 53.17-r1 generated headers and produced a DLL using MSYS2 Perl 5.40.3. Strawberry Perl still crashes during shutdown with `0xC0000005`; its native cause is unknown. The workflow remains pinned to 53.12-r1, and a CI build/release artifact for the selected target is not verified. Runtime and feature tests are separate and remain unrun. |
 | Automated tests | Test native networking/queues, Lua routing, permissions, config, and persistence. | **Planned** | High | No test files or test runner are present in the repository. | Add focused C++ and Lua tests and wire them into CI. |
 | Twitch and DFHack integration tests | Test plugin loading, auth, chat, Helix polls, and failure paths against real supported services. | **Planned** | High | [`dev/README.md`](./dev/README.md), [`README.md`](./README.md) | No current tests were run. Use a dedicated test account and report unperformed checks as NOT TESTED. |
 | Disposable-fortress and clean-install tests | Verify gameplay effects, save/reload, shutdown, packaging, and documented Windows installation. | **Planned** | High | [`SPEC.md`](./SPEC.md), [`dev/README.md`](./dev/README.md) | No in-game or clean-install test has been performed. |
-| Compatibility and distribution support | Declare and verify supported DF/DFHack releases and installation distributions. | **Partially implemented** | High | [`README.md`](./README.md), [`info.txt`](./info.txt), [`build.yml`](./.github/workflows/build.yml) | The owner selected 53.17/53.17-r1, but workflow/docs still target 53.12/53.12-r1. No target-version or Steam/itch.io/Classic installation has been tested. |
+| Compatibility and distribution support | Declare and verify supported DF/DFHack releases and installation distributions. | **Partially implemented** | High | [`README.md`](./README.md), [`info.txt`](./info.txt), [`build.yml`](./.github/workflows/build.yml) | A clean compile is verified for 53.17-r1, but runtime compatibility is not. The workflow remains pinned to 53.12-r1, and no Steam/itch.io/Classic installation has been tested. |
 | User documentation | Explain real functionality, permissions, installation, config, limitations, and troubleshooting. | **Partially implemented** | Medium | [`README.md`](./README.md), [`SPEC.md`](./SPEC.md), [`dev/README.md`](./dev/README.md), [`dfxt-help.lua`](./scripts_modinstalled/dfxt-help.lua) | Several spec claims exceed implementation; config examples and command help need alignment with tested behavior. |
 | Recovery, migration, and uninstall guide | Explain token recovery, config migration, revocation, and safe removal. | **Planned** | Medium | [`README.md`](./README.md), [`dev/README.md`](./dev/README.md) | Document DPAPI profile limitations, legacy-token migration, troubleshooting, and uninstall/revocation steps. |
 
