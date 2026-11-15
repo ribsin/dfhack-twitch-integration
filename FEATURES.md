@@ -8,8 +8,9 @@ not been treated as verified behavior.
 No automated, in-game, Twitch integration, or clean-install tests were run for
 this baseline. At inventory time, the workflow targeted DFHack 53.12-r1 /
 Dwarf Fortress 53.12. The owner has since selected DFHack 53.17-r1 /
-Dwarf Fortress 53.17 as the target; the workflow and docs have not yet been
-updated or tested against it.
+Dwarf Fortress 53.17 as the target. The workflow remains pinned to 53.12-r1;
+a local plugin compile against 53.17-r1 has succeeded, but runtime compatibility
+has not been tested.
 
 ## Verification update (2026-11-15)
 
@@ -19,10 +20,25 @@ updated or tested against it.
 - CMake 3.31.6 generated the `dfxtwitch` Visual Studio 2022 x64 target.
 - The staged `nlohmann/json.hpp` exists and matches the pinned 3.12.0
   SHA-256. No dependency copy or download was needed.
-- A targeted build stopped in DFHack XML header generation before compiling
-  the plugin. Strawberry Perl's XML modules load after temporarily adding its
-  `c\bin` directory to `PATH`, but the code generator still exits with
-  `0xC0000005`. No `dfxtwitch.plug.dll` was produced.
+- The generated header command uses
+  `%LOCALAPPDATA%\StrawberryPerl\perl\bin\perl.exe` (Perl 5.40.5.1), with
+  XML::LibXML 2.0213 and XML::LibXSLT 2.003000. The modules load when
+  Strawberry Perl's `c\bin` is added to `PATH`; `PERL5LIB` and `PERL5OPT` are
+  unset.
+- The exact DFHack `codegen.pl` command reproducibly exits with
+  `0xC0000005`. It parses and transforms all 129 XML inputs, writes
+  `codegen.out.xml`, reaches `exit` with error level 0, and then crashes during
+  Perl shutdown. Windows Error Reporting identifies `ntdll.dll` at offset
+  `0x000000000001a12d`; the specific native component causing the fault is
+  not identified. Process-local `PERL_DESTRUCT_LEVEL` values 0, 1, and 2 did
+  not prevent it.
+- A subsequent `cmake --build C:\dfhack-build-53.17-r1-twitch --target
+  dfxtwitch --config Release` completed successfully and compiled the plugin
+  sources. It consumed the generated headers from the earlier codegen run;
+  the incremental build did not rerun the crashing generator. The resulting
+  `dfxtwitch.plug.dll` exists at
+  `C:\dfhack-build-53.17-r1-twitch\plugins\external\dfxtwitch\Release\dfxtwitch.plug.dll`
+  (299,008 bytes). A clean/reproducible build remains blocked by codegen.
 - No automated feature tests, Twitch integration tests, or in-game tests were
   run.
 
@@ -32,8 +48,8 @@ updated or tested against it.
 |---|---:|
 | Implemented and tested | 0 |
 | Implemented but untested | 7 |
-| Partially implemented | 28 |
-| Planned | 17 |
+| Partially implemented | 29 |
+| Planned | 16 |
 | Blocked | 0 |
 | Deferred | 1 |
 | Removed | 1 |
@@ -43,7 +59,7 @@ updated or tested against it.
 
 | Feature | Description | Status | Priority | Evidence | Missing work |
 |---|---|---|---|---|---|
-| Supported DF/DFHack target | Build and test the selected release target, DF 53.17 / DFHack 53.17-r1. | **Planned** | High | [`build.yml`](./.github/workflows/build.yml), [`dev/README.md`](./dev/README.md), [`README.md`](./README.md) | Update the workflow and docs to the selected target, then build and test it. Do not claim compatibility until those checks pass. |
+| Supported DF/DFHack target | Build and test the selected release target, DF 53.17 / DFHack 53.17-r1. | **Partially implemented** | High | [`build.yml`](./.github/workflows/build.yml), [`dev/README.md`](./dev/README.md), [`README.md`](./README.md) | The plugin compiled for 53.17-r1 using existing generated headers, but clean code generation, runtime compatibility, and integration tests remain unverified. The workflow still targets 53.12-r1; do not claim support until the remaining checks pass. |
 | OAuth architecture redesign | Reconsider the current Windows desktop authorization-code flow. | **Deferred** | Critical | [`oauth_server.cpp`](./dev/src/oauth_server.cpp), [`lua_api.cpp`](./dev/src/lua_api.cpp), [`config.example.json`](./config.example.json) | The owner chose to defer architecture changes until the existing flow is tested. Keep the current model for now; test it and revisit only with approval. |
 
 ## Native plugin and networking
@@ -120,7 +136,7 @@ updated or tested against it.
 
 | Feature | Description | Status | Priority | Evidence | Missing work |
 |---|---|---|---|---|---|
-| Reproducible plugin build and release workflow | Build the Windows plugin against a pinned DFHack checkout and produce a release artifact. | **Partially implemented** | Critical | [`build.yml`](./.github/workflows/build.yml), [`dev/CMakeLists.txt`](./dev/CMakeLists.txt) | The JSON dependency is pinned to 3.12.0 and its staged header hash matches. The workflow still targets 53.12-r1. A local 53.17-r1 target build failed during DFHack XML header generation with Perl exit `0xC0000005`, before plugin compilation; diagnose the Perl/codegen failure, then build and test the DLL. |
+| Reproducible plugin build and release workflow | Build the Windows plugin against a pinned DFHack checkout and produce a release artifact. | **Partially implemented** | Critical | [`build.yml`](./.github/workflows/build.yml), [`dev/CMakeLists.txt`](./dev/CMakeLists.txt) | The JSON dependency is pinned to 3.12.0 and its staged header hash matches. The workflow still targets 53.12-r1. The `dfxtwitch` Release target compiled against 53.17-r1 and produced a DLL using existing generated headers, but the XML code generator still crashes during Perl shutdown, so a clean/reproducible build remains blocked. Fix the generator environment safely, then verify a clean target build and release artifact. |
 | Automated tests | Test native networking/queues, Lua routing, permissions, config, and persistence. | **Planned** | High | No test files or test runner are present in the repository. | Add focused C++ and Lua tests and wire them into CI. |
 | Twitch and DFHack integration tests | Test plugin loading, auth, chat, Helix polls, and failure paths against real supported services. | **Planned** | High | [`dev/README.md`](./dev/README.md), [`README.md`](./README.md) | No current tests were run. Use a dedicated test account and report unperformed checks as NOT TESTED. |
 | Disposable-fortress and clean-install tests | Verify gameplay effects, save/reload, shutdown, packaging, and documented Windows installation. | **Planned** | High | [`SPEC.md`](./SPEC.md), [`dev/README.md`](./dev/README.md) | No in-game or clean-install test has been performed. |

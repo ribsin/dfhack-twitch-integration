@@ -56,8 +56,11 @@ Twitch native poll <-- Helix -- plugin
   versions have not been validated.
 
 The build workflow is currently pinned to DFHack 53.12-r1 and Dwarf Fortress
-53.12. DFHack 53.17-r1 and Dwarf Fortress 53.17 have not been verified; the
-plugin's binary interface depends on the DFHack version.
+53.12. A local Release target compile completed against DFHack 53.17-r1, but
+runtime compatibility has not been tested. That incremental build used
+generated headers already present; a clean XML code-generation run remains
+blocked by a Perl crash. The plugin ABI depends on the DFHack version, so this
+compile alone does not establish compatibility.
 
 ## Requirements
 
@@ -70,9 +73,8 @@ plugin's binary interface depends on the DFHack version.
   artifact from this repository's GitHub Releases.
 
 Chat uses WinHTTP WebSockets over TLS. OAuth credentials are protected with
-Windows DPAPI for the current Windows user. The networking and credential
-storage changes still require a successful Windows build and live connection
-test before they can be considered validated.
+Windows DPAPI for the current Windows user. These paths still require a live
+connection test and have not been runtime-validated.
 
 ## Install
 
